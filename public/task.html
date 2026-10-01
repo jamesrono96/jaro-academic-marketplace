@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Task · Jaro Academic</title><link rel="stylesheet" href="/style.css"></head>
+<body><header class="nav"><div class="wrap navin"><a class="brand" href="/">Jaro<span> Academic</span></a><nav><a href="/tasks.html">Opportunities</a><a href="/dashboard.html">Dashboard</a></nav></div></header>
+<main class="section"><div class="wrap"><div id="page">Loading…</div></div></main>
+<script>
+const id=new URLSearchParams(location.search).get("id");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function load(){const r=await fetch("/api/tasks/"+id);const d=await r.json();if(!r.ok){page.innerHTML="<div class='card'>Task not found.</div>";return}
+let h=`<div class="card"><span class="tag">${esc(d.task.category)}</span><h1>${esc(d.task.title)}</h1><p class="muted">${esc(d.task.description)}</p><p><b>Budget:</b> KES ${d.task.budget_min||0}–${d.task.budget_max||0} · <b>Status:</b> ${esc(d.task.status)}</p>`;
+if(d.isOwner){h+=`<div class="notice">You posted this task. Select a provider below to create an order.</div>`}
+else if(d.signedIn){h+=`<div class="panel"><h2>Submit proposal</h2><form id="bid"><div class="grid2"><div class="field"><label>Your price (KES)</label><input name="amount" type="number" min="1" required></div><div class="field"><label>Delivery days</label><input name="delivery_days" type="number" min="1" required></div></div><div class="field"><label>Proposal</label><textarea name="proposal" required placeholder="Explain your approach and relevant experience."></textarea></div><button class="btn">Submit proposal</button></form></div>`}
+else h+=`<div class="notice">Sign in to submit a proposal.</div>`;
+h+=`<h2>Proposals (${d.bids.length})</h2>`;
+h+=d.bids.length?d.bids.map(b=>`<div class="card proposal"><h3>${esc(b.provider_name)} ${b.verified?"✓":""}</h3><p class="muted">${esc(b.proposal)}</p><p><b>KES ${b.amount}</b> · ${b.delivery_days} days</p>${d.isOwner&&d.task.status==="open"?`<button class="btn" onclick="selectProvider('${b.provider_user_id}',${b.amount})">Select provider</button>`:""}</div>`).join(""):"<p class='muted'>No proposals yet.</p>`;
+h+="</div>";page.innerHTML=h;
+const f=document.querySelector("#bid");if(f)f.onsubmit=async e=>{e.preventDefault();const b=Object.fromEntries(new FormData(f));b.task_id=id;const r=await fetch("/api/bids",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});const x=await r.json();if(r.ok){alert("Proposal submitted.");load()}else alert(x.error||"Could not submit proposal")}}
+async function selectProvider(provider,amount){const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task_id:id,provider_user_id:provider,amount})});const d=await r.json();if(!r.ok)return alert(d.error||"Could not create order");if(!confirm("Order created. Continue to secure card/M-Pesa checkout?"))return;const p=await fetch("/api/orders/"+d.order.id+"/checkout",{method:"POST"});const x=await p.json();if(p.ok&&x.checkout_url)location.href=x.checkout_url;else alert(x.error||"Checkout could not be started")}
+load();
+</script></body></html>
