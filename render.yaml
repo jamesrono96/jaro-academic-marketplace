@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: jaro-academic-marketplace
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jaro-academic-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      - key: FLW_SECRET_KEY
+        sync: false
+      - key: FLW_WEBHOOK_SECRET
+        sync: false
+      - key: FLW_TEST_MODE
+        value: "true"
+
+databases:
+  - name: jaro-academic-db
+    plan: free
